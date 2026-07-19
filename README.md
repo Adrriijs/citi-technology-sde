@@ -15,8 +15,12 @@ Twelve Data API every 15 seconds and stores each result in a queue.
 ```
 .
 ├── src
-│   └── App.java              Java application source
-├── .env.example               Template for the required environment variable
+│   └── App.java                    Java application source
+├── data
+│   └── prices.jsonl                 Collected price data, written by App.java (not committed)
+├── DIA_Price_Visualization.ipynb    Notebook that plots data/prices.jsonl
+├── run.sh                           Loads .env, compiles, and runs App.java
+├── .env.example                     Template for the required environment variable
 └── README.md
 ```
 
@@ -57,7 +61,12 @@ pulling in a JSON library.
 
 Each result is captured as a `PricePoint`, a small internal class holding the price and
 the timestamp it was retrieved at. Points are stored in a `java.util.Queue` backed by an
-`ArrayDeque`, in the order they arrive.
+`ArrayDeque`, in the order they arrive, and are also appended as a line of JSON to
+`data/prices.jsonl` (JSON Lines format — one `{"price":...,"timestamp":...}` object per
+line) so the data can be picked up outside the running process, for example by the
+visualization notebook below. `data/prices.jsonl` is truncated at the start of every run,
+so it always holds only the current run's data points, not a log across multiple runs.
+The file is not committed to the repo.
 
 **Scheduling**
 
@@ -73,13 +82,41 @@ error and exits.
 
 ## Running locally
 
-The application is compiled and run directly with a local JDK 11 or later installation.
+Requires a local JDK 11 or later installation.
+
+From the **project root** (not `src/` — `run.sh` handles moving into `src/` itself):
 
 ```
-cd src
+./run.sh
+```
+
+This loads `TWELVE_DATA_API_KEY` from `.env`, compiles `src/App.java`, and runs it. The
+application keeps polling every 15 seconds until it is stopped, for example with
+`Ctrl+C`.
+
+If `./run.sh` doesn't work, check:
+
+- You're in the project root (`ls` should show `run.sh`, not `App.java`).
+- It's executable: `chmod +x run.sh`.
+- `.env` exists and has `TWELVE_DATA_API_KEY` set (copy it from `.env.example` if not).
+
+**Running the steps by hand instead**, for example to skip `.env`:
+
+```
 export TWELVE_DATA_API_KEY=your_api_key_here
+cd src
 javac App.java
 java App
 ```
 
-The application will continue running until it is stopped, for example with `Ctrl+C`.
+`.env` is only a convention for storing the key — nothing loads it automatically when
+running these steps by hand, so the key must be exported into the shell before `java`
+runs. `run.sh` exists specifically to do that for you.
+
+## Visualizing the data
+
+`DIA_Price_Visualization.ipynb` reads `data/prices.jsonl` and plots price over time with
+pandas and matplotlib. It does not install, compile, or run Java — start the tracker
+first (above), let it collect a few data points, then run the notebook's cells. Re-run
+the cells at any point (the tracker can keep running in the background) to refresh the
+chart with newly collected points.
