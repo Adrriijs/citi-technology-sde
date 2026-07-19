@@ -38,8 +38,11 @@ public class App {
 
         try {
             Files.createDirectories(OUTPUT_FILE.getParent());
+            // Start each run with a clean file so the notebook only ever plots
+            // the points collected during this run, not prior runs' leftovers.
+            Files.writeString(OUTPUT_FILE, "", StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
-            System.err.println("Failed to create output directory: " + e.getMessage());
+            System.err.println("Failed to prepare output file: " + e.getMessage());
             System.exit(1);
         }
 
